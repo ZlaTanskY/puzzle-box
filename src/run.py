@@ -6,4 +6,5 @@ def main():
     """Main process."""
     # Create a game
     puzzle = Puzzle()
+    puzzle.reset()
     puzzle.play()
