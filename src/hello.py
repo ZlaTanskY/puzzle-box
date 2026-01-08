@@ -1,4 +1,7 @@
+"""Some stuff."""
+
 def main():
+    """Some stuff."""
     print("Hello from puzzle-box!")
 
 

@@ -1,0 +1,34 @@
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+    -   id: trailing-whitespace
+-   repo: local
+    hooks:
+    - id: ruff
+      name: ruff
+      stages:
+      - pre-commit
+      entry: ruff check src tests
+      exclude: uv.lock|README.md|.gitignore|.pre-commit-config.yaml
+      language: system
+    - id: pylint
+      name: pylint
+      stages:
+      - pre-commit
+      entry: pylint src tests
+      exclude: uv.lock|README.md|.gitignore|.python-version|pyproject.toml|.pre-commit-config.yaml
+      language: system
+    - id: pydocstyle
+      name: pydocstyle
+      stages:
+      - pre-commit
+      entry: pydocstyle --convention google
+      language: system
+    - id: ty
+      name: ty
+      stages:
+      - pre-commit
+      entry: ty check
+      language: system
+      exclude: uv.lock|README.md|.gitignore|pyproject.toml|.pre-commit-config.yaml

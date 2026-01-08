@@ -1,12 +1,10 @@
 """Tests for all models."""
 
-import pytest
-
-from src.models import Button, Switch
+from src.models import Switch
 
 
 def test_switch_init():
     """Test initializing a Switch."""
     switch = Switch(id=0, state=True)
     assert switch.id == 0
-    assert switch.state == True
+    assert switch.state is True
