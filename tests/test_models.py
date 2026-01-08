@@ -4,7 +4,7 @@ import random
 
 from pytest_mock import MockerFixture
 
-from src.models import Puzzle
+from src.models import LEVELS, Puzzle
 
 
 def test_puzzle_init():
@@ -12,6 +12,7 @@ def test_puzzle_init():
     puzzle = Puzzle()
     assert len(puzzle.leds) == 10
     assert len(puzzle.switches) == 10
+    assert puzzle.level == 1
 
 
 def test_get_puzzle_led_states():
@@ -111,30 +112,38 @@ def test_get_display():
 def test_create_puzzle_map():
     """Test creating the random map between switches and LEDs."""
     puzzle = Puzzle()
+    level_config = LEVELS[1]
 
     random.seed(13)
-    target_1 = {0: 3, 1: 0, 2: 7, 3: 8, 4: 6, 5: 1, 6: 5, 7: 2, 8: 9, 9: 4}
-    target_2 = {0: 8, 1: 6, 2: 4, 3: 7, 4: 0, 5: 9, 6: 5, 7: 3, 8: 1, 9: 2}
+    target_1 = {0: [3], 1: [0], 2: [7], 3: [8], 4: [6], 5: [1], 6: [5], 7: [2], 8: [9], 9: [4]}
+    target_2 = {0: [6], 1: [0], 2: [8], 3: [2], 4: [9], 5: [3], 6: [5], 7: [7], 8: [4], 9: [1]}
 
-    result_1 = puzzle.create_puzzle_map()
+    result_1 = puzzle.create_puzzle_map(level_config)
 
     assert result_1 == target_1
 
-    result_2 = puzzle.create_puzzle_map()
+    result_2 = puzzle.create_puzzle_map(level_config)
 
+    print(result_2)
     assert result_2 == target_2
 
 
 def test_take_step():
     """Test taking a step by toggling one switch."""
     puzzle = Puzzle()
-    puzzle.map = dict(zip(range(10), range(9, 0, -1)))
+    led_map = [[4], [1], [8], [9, 1], [7, 3], [2], [6, 3], [3], [10, 8], [5, 3]]
+    puzzle.map = dict(zip(range(10), led_map))
 
     assert sum(puzzle.get_led_states()) == 0
 
     puzzle.take_step(0)
     assert sum(puzzle.get_led_states()) == 1
-    assert puzzle.get_led_states()[-1] == 1
+    assert puzzle.get_led_states()[4] == 1
+
+    puzzle.take_step(3)
+    assert sum(puzzle.get_led_states()) == 3
+    assert puzzle.get_led_states()[9] == 1
+    assert puzzle.get_led_states()[1] == 1
 
 
 def test_puzzle_is_solved():
@@ -148,3 +157,45 @@ def test_puzzle_is_solved():
         led.state = True
 
     assert puzzle.is_solved()
+
+
+def test_increase_level():
+    """Test increasing the level of the puzzle."""
+    puzzle = Puzzle()
+
+    assert puzzle.level == 1
+
+    puzzle.increase_level()
+
+    assert puzzle.level == 2
+
+
+def test_increase_level_max_10():
+    """Test increasing the level of the puzzle does not go higher than 10."""
+    puzzle = Puzzle()
+    puzzle.level = 10
+
+    puzzle.increase_level()
+
+    assert puzzle.level == 10
+
+
+def test_decrease_level():
+    """Test decreasing the level of the puzzle."""
+    puzzle = Puzzle()
+
+    puzzle.level = 5
+
+    puzzle.decrease_level()
+
+    assert puzzle.level == 4
+
+
+def test_decrease_level_minimum_1():
+    """Test decreasing the level of the puzzle does not go lower than 1."""
+    puzzle = Puzzle()
+    puzzle.level = 1
+
+    puzzle.decrease_level()
+
+    assert puzzle.level == 1
