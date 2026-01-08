@@ -1,5 +1,6 @@
 """Definition of all buttons and switches."""
 
+import os
 from dataclasses import dataclass
 
 
@@ -56,3 +57,29 @@ class Puzzle:
         """
         for led in self.leds:
             led.state = False
+
+    def get_display(self) -> str:
+        """Construct the display of the Puzzle."""
+        led_states = [str(int(led)) for led in self.get_led_states()]
+        switch_states = [str(int(switch)) for switch in self.get_switch_states()]
+        display = "LEDs:     " + " ".join(led_states) + "\nSwitches: " + " ".join(switch_states)
+        return display
+
+    def render(self):
+        """Render the current state of the Puzzle."""
+        print(self.get_display())
+
+    def play(self):
+        """Play a Puzzle game."""
+        # Setup display
+        os.system("clear")
+        self.render()
+
+        while (switch_id := input("Which switch do you want to toggle? [0-9]")) != "exit":
+            if switch_id.isdigit():
+                # For now just toggle the same LED as Switch id
+                self.toggle_switch(int(switch_id))
+                self.toggle_led(int(switch_id))
+
+            os.system("clear")
+            self.render()

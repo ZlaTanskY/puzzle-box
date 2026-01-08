@@ -66,3 +66,17 @@ def test_puzzle_reset():
 
     assert sum(puzzle.get_led_states()) == 0
     assert sum(puzzle.get_switch_states()) == 1
+
+
+def test_get_display():
+    """Test constructing the display of a puzzle."""
+    puzzle = Puzzle()
+
+    target = (
+        """LEDs:     0 0 0 0 0 0 0 0 0 0\n"""
+        """Switches: 0 0 0 0 0 0 0 0 0 0"""
+    )
+
+    result = puzzle.get_display()
+
+    assert result == target
