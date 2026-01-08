@@ -142,7 +142,12 @@ class Puzzle:
         cmd = ""
         choose_level = True
 
-        while cmd != "exit" and not self.is_solved():
+        while cmd != "exit":
+            if self.is_solved():
+                print("Congratulations, you have solved this puzzle!")
+                print("A new game will start")
+                choose_level = True
+
             # Select level
             if choose_level:
                 cmd = input(
@@ -165,8 +170,6 @@ class Puzzle:
                 os.system("clear")
                 self.render()
 
-        if self.is_solved():
-            print("Congratulations, you have solved this puzzle!")
 
     def is_solved(self) -> bool:
         """Check whether the puzzle is solved or not."""
