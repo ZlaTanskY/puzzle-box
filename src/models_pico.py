@@ -24,6 +24,7 @@ class Puzzle(PuzzleBase):
         self.map: dict[int, list[int]] = {}
         self.level = 1
         self.completed = False
+        self.is_playing = False
         self.last_state = {}
 
         # The SELECT button remains the same throughout the game
@@ -31,6 +32,18 @@ class Puzzle(PuzzleBase):
         button_select.when_pressed = self.toggle_stage
 
         self.choose_level = False
+
+    def reset(self):
+        """Reset the puzzle while suppressing solved-detection."""
+        self.is_playing = False
+        super().reset()
+        self.is_playing = True
+
+    def is_solved(self) -> bool:
+        """Return True only while the puzzle is in active play."""
+        if not self.is_playing:
+            return False
+        return super().is_solved()
 
     def take_step(self, switch_id):
         """Take a step in the puzzle by toggling the given Switch."""
@@ -76,6 +89,7 @@ class Puzzle(PuzzleBase):
 
     def activate_level_select_stage(self):
         """Activate the correct GPIO necessary to select a level."""
+        self.is_playing = False
         self.turn_off_leds()
         self.blink_level()
 
