@@ -4,6 +4,8 @@ These are separate because this is run using MicroPython.
 The imports will not work using Python.
 """
 
+import time
+
 from picozero import LED, Button, Switch
 
 from src.models import PuzzleBase
@@ -12,6 +14,20 @@ from src.models import PuzzleBase
 LED_PINS = tuple(range(0, 10))
 SWITCH_PINS = tuple(range(10, 20))
 BUTTON_PINS = (20, 21, 22)
+
+# Inputs are polled rather than interrupt-driven. Driving an LED pin from
+# inside an IRQ-scheduled callback couples glitches back onto the switch
+# lines; with the scheduler locked those glitch IRQs overflow the
+# micropython.schedule queue (EventFailedScheduleQueueFull). Polling never
+# calls schedule() on an edge, so a coupled glitch is just read as a
+# momentary level and filtered out by the debounce below.
+DEBOUNCE_MS = 50
+POLL_INTERVAL_MS = 5
+
+# Button roles within BUTTON_PINS.
+BTN_INCREASE = 0
+BTN_DECREASE = 1
+BTN_SELECT = 2
 
 class Puzzle(PuzzleBase):
     """Puzzle to be integrated in the Pico microchip."""
@@ -25,13 +41,18 @@ class Puzzle(PuzzleBase):
         self.level = 1
         self.completed = False
         self.is_playing = False
-        self.last_state = {}
-
-        # The SELECT button remains the same throughout the game
-        button_select = self.buttons[2]
-        button_select.when_pressed = self.toggle_stage
-
         self.choose_level = False
+
+        # Debounce state for polled inputs: the last accepted (stable) reading,
+        # the current candidate reading, and the tick at which the candidate
+        # was first seen. A candidate is accepted only once it has persisted
+        # for DEBOUNCE_MS, which filters out coupled glitches.
+        self._btn_accepted = [False] * len(self.buttons)
+        self._btn_candidate = [False] * len(self.buttons)
+        self._btn_since = [0] * len(self.buttons)
+        self._sw_accepted = [False] * len(self.switches)
+        self._sw_candidate = [False] * len(self.switches)
+        self._sw_since = [0] * len(self.switches)
 
     def reset(self):
         """Reset the puzzle while suppressing solved-detection."""
@@ -66,11 +87,71 @@ class Puzzle(PuzzleBase):
         """Play the game in the microchip."""
         self.toggle_stage()
         while True:
+            self.poll_inputs()
             if self.is_solved() and not self.choose_level and not self.completed:
                 self.completed = True
                 self.congratulations()
                 print("Done celebrating")
                 self.reset()
+            time.sleep_ms(POLL_INTERVAL_MS)
+
+    def poll_inputs(self):
+        """Read inputs and act on debounced state changes.
+
+        Replaces picozero's interrupt callbacks: an edge never schedules a
+        callback, so it cannot overflow the micropython schedule queue.
+        """
+        # SELECT toggles between the level-select and play stages in both
+        # stages. Acting on it ends the iteration because it rebuilds the
+        # input layout.
+        if self._button_pressed(BTN_SELECT):
+            self.toggle_stage()
+            return
+
+        if self.choose_level:
+            if self._button_pressed(BTN_INCREASE):
+                self.increase_level()
+            if self._button_pressed(BTN_DECREASE):
+                self.decrease_level()
+        else:
+            for enum in range(len(self.switches)):
+                if self._switch_changed(enum):
+                    self.take_step(enum + 10)
+
+    def _debounce(self, raw, idx, accepted, candidate, since):
+        """Return True when `raw` becomes the new debounced state for `idx`."""
+        if raw != accepted[idx]:
+            if raw != candidate[idx]:
+                candidate[idx] = raw
+                since[idx] = time.ticks_ms()
+            elif time.ticks_diff(time.ticks_ms(), since[idx]) >= DEBOUNCE_MS:
+                accepted[idx] = raw
+                return True
+        else:
+            candidate[idx] = raw
+        return False
+
+    def _button_pressed(self, idx) -> bool:
+        """Return True on a debounced press (inactive -> active) of a button."""
+        raw = self.buttons[idx].is_active
+        changed = self._debounce(
+            raw, idx, self._btn_accepted, self._btn_candidate, self._btn_since
+        )
+        return changed and self._btn_accepted[idx]
+
+    def _switch_changed(self, idx) -> bool:
+        """Return True on any debounced change of a switch's position."""
+        raw = self.switches[idx].is_active
+        return self._debounce(
+            raw, idx, self._sw_accepted, self._sw_candidate, self._sw_since
+        )
+
+    def _snapshot_switches(self):
+        """Baseline switch readings so entering play doesn't fire a phantom step."""
+        for enum, switch in enumerate(self.switches):
+            state = switch.is_active
+            self._sw_accepted[enum] = state
+            self._sw_candidate[enum] = state
 
     def toggle_stage(self):
         """Toggle between stages.
@@ -88,65 +169,23 @@ class Puzzle(PuzzleBase):
         self.choose_level = not self.choose_level
 
     def activate_level_select_stage(self):
-        """Activate the correct GPIO necessary to select a level."""
+        """Switch the game into the level-select stage.
+
+        Inputs are polled (see :meth:`poll_inputs`), so no GPIO callbacks are
+        registered here; this only sets up the display.
+        """
         self.is_playing = False
         self.turn_off_leds()
         self.blink_level()
 
-        # Deactivate switches
-        for switch in self.switches:
-            switch.when_activated = self.nothing
-            switch.when_deactivated = self.nothing
-
-        # Activate buttons
-        button_increase_level = self.buttons[0]
-        button_increase_level.when_pressed = self.increase_level
-        button_decrease_level = self.buttons[1]
-        button_decrease_level.when_pressed = self.decrease_level
-
     def activate_play_stage(self):
-        """Activate the correct GPIO necessary to play the puzzle."""
+        """Switch the game into the play stage.
+
+        Inputs are polled (see :meth:`poll_inputs`), so no GPIO callbacks are
+        registered; we just build the puzzle and baseline the switches.
+        """
         self.reset()
-
-        # Activate switches
-        for enum, switch in enumerate(self.switches):
-            # Micro implementation of partial as 
-            # it is not available in MicroPython
-            def make_step(e):
-                def step():
-                    self.take_step(e)
-                return step
-            
-            def make_step_v2(e):
-                def step():
-                    current = self.switches[e].active_state
-                    previous = self.last_state.get(e)
-
-                    # ignore repeated identical events
-                    if previous == current:
-                        return
-
-                    self.last_state[e] = current
-
-                    # only act on real transition
-                    self.take_step(e + 10)
-
-                return step
-
-            # TODO: Refactor this
-            step = make_step(enum + 10)
-            # step = make_step_v2(enum)
-            switch.when_activated = step
-            switch.when_deactivated = step
-
-        # Deactivate some buttons
-        button_increase_level = self.buttons[0]
-        button_increase_level.when_pressed = self.nothing
-        button_decrease_level = self.buttons[1]
-        button_decrease_level.when_pressed = self.nothing
-
-    def nothing(self):
-        """Empty callback"""
+        self._snapshot_switches()
 
     def congratulations(self):
         """Blink some LEDs after finishing the puzzle."""
