@@ -100,7 +100,6 @@ class Puzzle(PuzzleBase):
             if self.is_solved() and not self.choose_level and not self.completed:
                 self.completed = True
                 self.congratulations()
-                print("Done celebrating")
                 self.reset()
             time.sleep_ms(POLL_INTERVAL_MS)
 
@@ -170,10 +169,8 @@ class Puzzle(PuzzleBase):
         - Play stage
         """
         if self.choose_level:
-            print("Now playing the stage")
             self.activate_play_stage()
         else:
-            print("Now selecting the level")
             self.activate_level_select_stage()
         self.choose_level = not self.choose_level
 
@@ -202,7 +199,6 @@ class Puzzle(PuzzleBase):
         Runs synchronously so the full animation plays before the caller
         resets the puzzle for the next game.
         """
-        print("Gratz, you won")
         # The puzzle is solved, so all LEDs are currently on. Blink them off
         # and back on in unison the configured number of times.
         for _ in range(CELEBRATE_BLINKS):
