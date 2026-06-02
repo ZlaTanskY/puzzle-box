@@ -24,6 +24,12 @@ BUTTON_PINS = (20, 21, 22)
 DEBOUNCE_MS = 50
 POLL_INTERVAL_MS = 5
 
+# Victory animation: blink every LED this many times, each on/off phase
+# lasting CELEBRATE_PHASE_MS. Done synchronously (no picozero Timer/blink) so
+# it actually completes before the puzzle is reset for the next game.
+CELEBRATE_BLINKS = 5
+CELEBRATE_PHASE_MS = 150
+
 # Button roles within BUTTON_PINS.
 BTN_INCREASE = 0
 BTN_DECREASE = 1
@@ -58,6 +64,9 @@ class Puzzle(PuzzleBase):
         """Reset the puzzle while suppressing solved-detection."""
         self.is_playing = False
         super().reset()
+        # Re-baseline switch positions so flips made while the puzzle was being
+        # rebuilt (or during the victory animation) don't fire a phantom step.
+        self._snapshot_switches()
         self.is_playing = True
 
     def is_solved(self) -> bool:
@@ -182,17 +191,25 @@ class Puzzle(PuzzleBase):
         """Switch the game into the play stage.
 
         Inputs are polled (see :meth:`poll_inputs`), so no GPIO callbacks are
-        registered; we just build the puzzle and baseline the switches.
+        registered; we just build the puzzle (``reset`` also baselines the
+        switches).
         """
         self.reset()
-        self._snapshot_switches()
 
     def congratulations(self):
-        """Blink some LEDs after finishing the puzzle."""
+        """Blink every LED simultaneously to celebrate a solved puzzle.
+
+        Runs synchronously so the full animation plays before the caller
+        resets the puzzle for the next game.
+        """
         print("Gratz, you won")
-        self.turn_off_leds()
-        # for led in self.leds:
-        #     led.blink(n=5)
+        # The puzzle is solved, so all LEDs are currently on. Blink them off
+        # and back on in unison the configured number of times.
+        for _ in range(CELEBRATE_BLINKS):
+            self.turn_off_leds()
+            time.sleep_ms(CELEBRATE_PHASE_MS)
+            self.turn_on_leds()
+            time.sleep_ms(CELEBRATE_PHASE_MS)
 
     def blink_level(self):
         """Blink LEDs based on the current level."""
