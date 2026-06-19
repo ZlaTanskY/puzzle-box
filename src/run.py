@@ -1,10 +1,11 @@
 """Processes that needs to be run."""
 
-from src.models import Puzzle
+from src.models import PuzzleBase
 
 def main():
     """Main process."""
     # Create a game
-    puzzle = Puzzle()
+    print("hello")
+    puzzle = PuzzleBase()
     puzzle.reset()
     puzzle.play()

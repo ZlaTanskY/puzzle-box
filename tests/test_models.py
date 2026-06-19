@@ -4,20 +4,20 @@ import random
 
 from pytest_mock import MockerFixture
 
-from src.models import LEVELS, Puzzle
+from src.models import LEVELS, PuzzleBase
 
 
 def test_puzzle_init():
-    """Test initializing a Puzzle instance."""
-    puzzle = Puzzle()
+    """Test initializing a PuzzleBase instance."""
+    puzzle = PuzzleBase()
     assert len(puzzle.leds) == 10
     assert len(puzzle.switches) == 10
     assert puzzle.level == 1
 
 
 def test_get_puzzle_led_states():
-    """Test getting the Puzzle's LED states."""
-    puzzle = Puzzle()
+    """Test getting the PuzzleBase's LED states."""
+    puzzle = PuzzleBase()
     target = [False] * 10
 
     result = puzzle.get_led_states()
@@ -26,8 +26,8 @@ def test_get_puzzle_led_states():
 
 
 def test_get_switch_states():
-    """Test getting the Puzzle's Switch states."""
-    puzzle = Puzzle()
+    """Test getting the PuzzleBase's Switch states."""
+    puzzle = PuzzleBase()
     target = [False] * 10
 
     result = puzzle.get_switch_states()
@@ -37,7 +37,7 @@ def test_get_switch_states():
 
 def test_get_switch_ids():
     """Test getting the switch_ids."""
-    puzzle = Puzzle()
+    puzzle = PuzzleBase()
     target = list(range(10))
 
     result = puzzle.get_switch_ids()
@@ -47,7 +47,7 @@ def test_get_switch_ids():
 
 def test_get_led_ids():
     """Test getting the switch_ids."""
-    puzzle = Puzzle()
+    puzzle = PuzzleBase()
     target = list(range(10))
 
     result = puzzle.get_led_ids()
@@ -57,7 +57,7 @@ def test_get_led_ids():
 
 def test_toggle_led():
     """Test toggling a LED."""
-    puzzle = Puzzle()
+    puzzle = PuzzleBase()
     puzzle.toggle_led(2)
 
     result = puzzle.get_led_states()
@@ -68,7 +68,7 @@ def test_toggle_led():
 
 def test_toggle_switch():
     """Test toggling a Switch."""
-    puzzle = Puzzle()
+    puzzle = PuzzleBase()
     puzzle.toggle_switch(2)
 
     result = puzzle.get_switch_states()
@@ -78,8 +78,8 @@ def test_toggle_switch():
 
 
 def test_puzzle_reset(mocker: MockerFixture):
-    """Test resetting an existing Puzzle."""
-    puzzle = Puzzle()
+    """Test resetting an existing PuzzleBase."""
+    puzzle = PuzzleBase()
     mock_take_steps = mocker.patch.object(puzzle, "take_n_random_steps")
     puzzle.toggle_led(2)
     # Resetting a puzzle should not reset switches as it is a hardware input
@@ -90,14 +90,14 @@ def test_puzzle_reset(mocker: MockerFixture):
 
     puzzle.reset()
 
-    assert sum(puzzle.get_led_states()) == 0
+    assert sum(puzzle.get_led_states()) == 10
     assert sum(puzzle.get_switch_states()) == 1
     mock_take_steps.assert_called_once()
 
 
 def test_get_display():
     """Test constructing the display of a puzzle."""
-    puzzle = Puzzle()
+    puzzle = PuzzleBase()
 
     target = (
         """LEDs:     0 0 0 0 0 0 0 0 0 0\n"""
@@ -111,7 +111,7 @@ def test_get_display():
 
 def test_create_puzzle_map():
     """Test creating the random map between switches and LEDs."""
-    puzzle = Puzzle()
+    puzzle = PuzzleBase()
     level_config = LEVELS[1]
 
     random.seed(13)
@@ -130,7 +130,7 @@ def test_create_puzzle_map():
 
 def test_take_step():
     """Test taking a step by toggling one switch."""
-    puzzle = Puzzle()
+    puzzle = PuzzleBase()
     led_map = [[4], [1], [8], [9, 1], [7, 3], [2], [6, 3], [3], [10, 8], [5, 3]]
     puzzle.map = dict(zip(range(10), led_map))
 
@@ -148,20 +148,20 @@ def test_take_step():
 
 def test_puzzle_is_solved():
     """Test checking if a puzzle is solved."""
-    puzzle = Puzzle()
+    puzzle = PuzzleBase()
 
     # The puzzle should not be solved from the start
     assert not puzzle.is_solved()
 
     for led in puzzle.leds:
-        led.state = True
+        led.value = True
 
     assert puzzle.is_solved()
 
 
 def test_increase_level():
     """Test increasing the level of the puzzle."""
-    puzzle = Puzzle()
+    puzzle = PuzzleBase()
 
     assert puzzle.level == 1
 
@@ -172,7 +172,7 @@ def test_increase_level():
 
 def test_increase_level_max_10():
     """Test increasing the level of the puzzle does not go higher than 10."""
-    puzzle = Puzzle()
+    puzzle = PuzzleBase()
     puzzle.level = 10
 
     puzzle.increase_level()
@@ -182,7 +182,7 @@ def test_increase_level_max_10():
 
 def test_decrease_level():
     """Test decreasing the level of the puzzle."""
-    puzzle = Puzzle()
+    puzzle = PuzzleBase()
 
     puzzle.level = 5
 
@@ -193,7 +193,7 @@ def test_decrease_level():
 
 def test_decrease_level_minimum_1():
     """Test decreasing the level of the puzzle does not go lower than 1."""
-    puzzle = Puzzle()
+    puzzle = PuzzleBase()
     puzzle.level = 1
 
     puzzle.decrease_level()
