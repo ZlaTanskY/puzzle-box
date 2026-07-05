@@ -46,7 +46,7 @@ def randomize_pico(ids: list[int], n_leds: tuple[int, ...]) -> list[int]:
         current_map = [ids[enum]]
         if n_links > 1:
             # add another link that is not same as the current one
-            current_map += random.sample(list(set(ids) - set([ids[enum]])), k=n_links-1)
+            current_map += sample(list(set(ids) - set([ids[enum]])), k=n_links-1)
         led_map.append(current_map)
     return led_map
 
@@ -55,3 +55,14 @@ def shuffle(lst):
     for i in range(len(lst)):
         j = random.randrange(i, len(lst))
         lst[i], lst[j] = lst[j], lst[i]
+
+
+def sample(population, k):
+    """Return k unique elements chosen from population.
+
+    MicroPython's random module has no random.sample (nor random.shuffle),
+    so implement it via the local shuffle: copy, shuffle, take the first k.
+    """
+    pool = list(population)
+    shuffle(pool)
+    return pool[:k]
