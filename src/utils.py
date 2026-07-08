@@ -35,7 +35,13 @@ def randomize_pico(ids: list[int], n_leds: tuple[int, ...]) -> list[int]:
             a switch. If this is a tuple of for example (1, 2), this means that
             some switches can be linked with one LED and other with two.
     """
-    random.seed(time.ticks_us())
+    try:
+        # MicroPython
+        seed = random.seed(time.ticks_us())
+    except AttributeError:
+        # CPython
+        seed = time.time_ns()
+    random.seed(seed)
     # Define basic shuffle
     ids = list(ids)
     shuffle(ids)

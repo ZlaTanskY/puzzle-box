@@ -67,13 +67,14 @@ class PuzzleBase:
     This game will be playable in Python, but no on the microchip.
     """
 
-    def __init__(self):
+    def __init__(self, simulation: bool):
         """Initialize a PuzzleBase instance."""
         self.leds = [LEDSimulation(id=i, value=False) for i in range(N_LEDS)]
         self.switches = [Switch(id=i, active_state=False) for i in range(N_LEDS)]
         self.map: dict[int, list[int]] = {}
         self.level = 1
         self.completed = False
+        self.simulation = simulation
 
     def get_led_states(self) -> list[bool | int]:
         """Get the states of all the PuzzleBase's LEDs."""
@@ -154,7 +155,10 @@ class PuzzleBase:
         """Shuffle the puzzle by taking n random steps."""
         for _ in range(n):
             # TODO: Refactor this hardcoded thing
-            switch_to_toggle = random.randint(10, 19)
+            if self.simulation:
+                switch_to_toggle = random.randint(0, 9)
+            else:
+                switch_to_toggle = random.randint(10, 19)
             self.take_step(switch_to_toggle)
 
     def play(self):
