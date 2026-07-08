@@ -6,6 +6,6 @@ def main():
     """Main process."""
     # Create a game
     print("hello")
-    puzzle = PuzzleBase()
+    puzzle = PuzzleBase(simulation=True)
     puzzle.reset()
     puzzle.play()
